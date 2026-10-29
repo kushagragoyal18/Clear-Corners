@@ -22,7 +22,7 @@ import {
 } from "@/lib/api";
 
 const POLL_MS = 1000;
-const CONTACT_EMAIL = "kzee.here@gmail.com";
+const CONTACT_EMAIL = "kzze.here@gmail.com";
 
 export default function Home() {
   const [job, setJob] = useState<Job | null>(null);
