@@ -39,8 +39,9 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Watermark Remover", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"], allow_headers=["*"],
-                   expose_headers=["Content-Disposition"])
+app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_origin_regex=settings.cors_origin_regex,
+                   allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"])
+logging.getLogger(__name__).info("CORS origins: %s regex: %s", settings.cors_origins, settings.cors_origin_regex)
 
 
 class BoxIn(BaseModel):
