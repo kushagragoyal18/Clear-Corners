@@ -1,0 +1,17 @@
+# Caddy obtains and renews the HTTPS certificate for $DOMAIN automatically.
+{$DOMAIN} {
+	encode gzip
+
+	# Uploads are capped at 200 MB by the backend; leave room for multipart overhead.
+	request_body {
+		max_size 210MB
+	}
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

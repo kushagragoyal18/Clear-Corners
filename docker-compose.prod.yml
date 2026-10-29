@@ -1,0 +1,53 @@
+# Production stack: Caddy (HTTPS) -> frontend + backend on one domain.
+# Usage on the server:
+#   echo "DOMAIN=yourdomain.com" > .env
+#   docker compose -f docker-compose.prod.yml up -d --build
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /data
+      MAX_UPLOAD_MB: "200"
+      JOB_TTL_SECONDS: "3600"
+      # Video jobs are CPU-heavy; keep concurrency low on small servers.
+      WORKERS: "1"
+      CORS_ORIGINS: https://${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - job-data:/data
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Empty = same origin: the browser calls /api/... on this domain, routed by Caddy.
+        NEXT_PUBLIC_API_URL: ""
+    restart: unless-stopped
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2.8.4
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # TLS certificates live here; keep this volume
+      - caddy-config:/config
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  job-data:
+  caddy-data:
+  caddy-config:

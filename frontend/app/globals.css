@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens as RGB triplets so Tailwind can apply alpha (see tailwind.config.ts). */
+:root {
+  --bg: 245 245 247;
+  --surface: 255 255 255;
+  --surface-2: 242 242 247;
+  --fill: 120 120 128; /* used at low alpha for wells, tracks, segmented controls */
+  --label: 29 29 31;
+  --label-2: 110 110 115;
+  --label-3: 134 134 139;
+  --separator: 0 0 0;
+  --accent: 0 113 227;
+  --success: 36 138 61;
+  --warning: 178 80 0;
+  --danger: 215 0 21;
+  --glass: 255 255 255;
+
+  color-scheme: light dark;
+  font: 100%/1.5 -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: 0 0 0;
+    --surface: 28 28 30;
+    --surface-2: 44 44 46;
+    --fill: 118 118 128;
+    --label: 245 245 247;
+    --label-2: 161 161 166;
+    --label-3: 110 110 115;
+    --separator: 255 255 255;
+    --accent: 10 132 255;
+    --success: 48 209 88;
+    --warning: 255 159 10;
+    --danger: 255 69 58;
+    --glass: 28 28 30;
+  }
+}
+
+html,
+body {
+  @apply bg-bg text-label antialiased;
+  /* Ease theme switches instead of snapping. */
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+@layer components {
+  /* Translucent floating chrome; content scrolls beneath it. */
+  .glass {
+    background: rgb(var(--glass) / 0.72);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  .card {
+    @apply rounded-3xl bg-surface shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_-12px_rgb(0_0_0/0.12)] ring-1 ring-separator/[0.06];
+  }
+
+  /* Pressed state shows on pointer-down, not on release. */
+  .pressable {
+    transition: transform 100ms ease-out, background-color 150ms ease, opacity 150ms ease;
+  }
+  .pressable:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  /* Display / title type: tight tracking and leading on large sizes. */
+  .t-display {
+    font-size: clamp(2.25rem, 5vw, 3.5rem);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+  }
+  .t-title {
+    font-size: 1.25rem;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+  /* Small text gets slightly looser tracking. */
+  .t-caption {
+    font-size: 0.75rem;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+  .pressable:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: rgb(var(--surface));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .glass {
+    background: rgb(var(--surface) / 0.98);
+    border-color: rgb(var(--separator) / 0.4) !important;
+  }
+  .card {
+    @apply ring-separator/30;
+  }
+}

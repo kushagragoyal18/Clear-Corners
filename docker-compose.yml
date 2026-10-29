@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATA_DIR: /data
+      MAX_UPLOAD_MB: "200"
+      JOB_TTL_SECONDS: "3600"
+      WORKERS: "2"
+      CORS_ORIGINS: http://localhost:3000
+    volumes:
+      - job-data:/data
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The browser talks to the backend directly, so this is the host-facing URL.
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  job-data:
