@@ -39,7 +39,8 @@ class RenderParams:
     high_quality: bool = False
 
     def cache_key(self) -> str:
-        raw = json.dumps({"mode": self.mode, "box": self.box.to_dict()}, sort_keys=True)
+        """Samples, mask and alpha depend only on the box, so all modes share them."""
+        raw = json.dumps(self.box.to_dict(), sort_keys=True)
         return hashlib.sha1(raw.encode()).hexdigest()[:12]
 
 
@@ -63,7 +64,7 @@ def sample_frames(path: str | Path, info: VideoInfo, n: int = 40, max_dim: int =
     return frames, scale
 
 
-def sample_rois(path: str | Path, info: VideoInfo, roi: Box, n: int = 48) -> np.ndarray:
+def sample_rois(path: str | Path, info: VideoInfo, roi: Box, n: int = 32) -> np.ndarray:
     """Evenly spaced full-resolution crops of ``roi`` (ffmpeg does the crop)."""
     # Convert to BGR *before* cropping: on subsampled YUV, ffmpeg's crop rounds
     # odd offsets/sizes to the chroma grid, which would skew our raw frames.
@@ -160,26 +161,47 @@ def processing_roi(box: Box, info: VideoInfo) -> Box:
 
 
 def prepare(path: str | Path, info: VideoInfo, params: RenderParams, cache_dir: Path | None = None) -> FrameProcessor:
-    """Build the processor for ``params``. Masks/alpha are cached per (mode, box)."""
+    """Build the processor for ``params``.
+
+    The sampled crops, logo mask and alpha model are cached per box, so switching
+    modes (or rendering after previewing) never re-reads the video for them.
+    """
     box = params.box.clamp(info.width, info.height)
     if params.mode == "crop":
         return CropProcessor(plan_crop(info.width, info.height, box))
 
     roi = processing_roi(box, info)
-    cache = cache_dir / f"model-{params.cache_key()}.npz" if cache_dir else None
-    if cache and cache.exists():
-        d = np.load(cache)
-        mask = d["mask"]
-        model = AlphaModel(d["alpha"], d["color"]) if "alpha" in d.files else None
-    else:
-        rois = sample_rois(path, info, roi)
-        mask = logo_mask(rois, box.relative_to(roi), dilate_px=3)
-        model = estimate_alpha_model(rois, mask) if params.mode == "alpha" else None
-        if cache:
-            extra = {"alpha": model.alpha, "color": model.color} if model else {}
-            np.savez_compressed(cache, mask=mask, **extra)
+    key = params.cache_key()
+    model_path = cache_dir / f"model-{key}.npz" if cache_dir else None
+    samples_path = cache_dir / f"samples-{key}.npy" if cache_dir else None
+    cached = dict(np.load(model_path)) if model_path and model_path.exists() else {}
+    dirty = False
+    rois: np.ndarray | None = None
 
+    def samples() -> np.ndarray:
+        nonlocal rois
+        if rois is None:
+            if samples_path and samples_path.exists():
+                rois = np.load(samples_path)
+            else:
+                rois = sample_rois(path, info, roi)
+                if samples_path:
+                    np.save(samples_path, rois)
+        return rois
+
+    if "mask" not in cached:
+        cached["mask"] = logo_mask(samples(), box.relative_to(roi), dilate_px=3)
+        dirty = True
+    if params.mode == "alpha" and "alpha" not in cached:
+        fitted = estimate_alpha_model(samples(), cached["mask"])
+        cached.update(alpha=fitted.alpha, color=fitted.color)
+        dirty = True
+    if model_path and dirty:
+        np.savez(model_path, **cached)  # small; skip compression to save CPU
+
+    mask = cached["mask"]
     if params.mode == "alpha":
+        model = AlphaModel(cached["alpha"], cached["color"])
         log.info("alpha model: colour=%s max alpha=%.2f", model.color.round(1), float(model.alpha.max()))
         return AlphaProcessor(roi, model)
     if params.mode == "inpaint_fast":
@@ -234,11 +256,11 @@ def process_stream(frames: Iterable[np.ndarray], proc: FrameProcessor) -> Iterat
 
 def render(src: str | Path, out: str | Path, info: VideoInfo, proc: FrameProcessor, high_quality: bool = False,
            start: float | None = None, duration: float | None = None,
-           progress: ProgressFn | None = None) -> tuple[np.ndarray, np.ndarray] | None:
+           progress: ProgressFn | None = None, preset: str | None = None) -> tuple[np.ndarray, np.ndarray] | None:
     """Encode the cleaned video. Returns the (before, after) pair from the middle frame."""
     total = info.nb_frames if duration is None else max(1, round(duration * info.fps_float))
     middle, still = total // 2, None
-    with FrameWriter(out, src, info, high_quality=high_quality, start=start, duration=duration) as writer:
+    with FrameWriter(out, src, info, high_quality=high_quality, start=start, duration=duration, preset=preset) as writer:
         for i, (orig, clean) in enumerate(process_stream(FrameReader(src, info, start=start, duration=duration), proc)):
             writer.write(clean)
             if i == middle:

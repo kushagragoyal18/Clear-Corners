@@ -78,8 +78,9 @@ def run_preview(store: FileJobStore, job_id: str, raw_params: dict) -> None:
     start = max(0.0, info.duration / 2 - length / 2)
     clip = f"preview{output_container(src)}"
     store.update(job_id, message="Rendering 3-second preview")
+    # The preview only needs to look right, so encode it with the fastest preset.
     still = render(src, d / clip, info, proc, params.high_quality, start=start, duration=length,
-                   progress=lambda p: store.update(job_id, progress=round(p, 3)))
+                   progress=lambda p: store.update(job_id, progress=round(p, 3)), preset="ultrafast")
     if still is None:
         raise RuntimeError("preview produced no frames")
     _write_jpg(d / "before.jpg", still[0])

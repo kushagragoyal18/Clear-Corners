@@ -156,9 +156,14 @@ Confidence is the winning blob's contrast against both its corner and the frame 
 prior. Nothing is pixel-hard-coded. When confidence is low, the app falls back to a box proportional to the frame
 size and flags it in the UI as "please adjust".
 
-Once a box is chosen (detected or user-edited), `logo_mask` builds a per-pixel mask inside it. It recomputes the
-score at full resolution on about 48 crops, fills holes so outlined glyphs become solid, adds the variance-drop cue,
-and dilates the result.
+Once a box is chosen (detected or user-edited), `logo_mask` builds a per-pixel mask inside it from about 32
+full-resolution crops. It combines three cues: the persistent-edge score, the variance drop, and a **contrast** cue
+that compares the median frame with the box filled in from its surroundings. The contrast cue needs no motion, so a
+logo over a static background is still covered completely. Holes are filled so outlined glyphs become solid, and the
+result is dilated.
+
+The crops, mask and alpha model are cached per box, so switching modes or exporting after a preview doesn't re-read
+the video. The preview clip is encoded with x264 `ultrafast`; exports keep `veryfast` (or `slow` in high quality).
 
 ### Mode A — reverse alpha blending (`video/alpha.py`)
 

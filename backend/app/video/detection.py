@@ -272,7 +272,22 @@ def logo_mask(rois: np.ndarray, box_in_roi: Box, dilate_px: int = 3) -> np.ndarr
         quiet = (std[ys, xs] < 0.75 * ref).astype(np.uint8)
         quiet = cv2.morphologyEx(quiet, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
 
-    inner = edge | quiet
+    # Contrast cue: the overlay shifts the colour of whatever is under it. Fill
+    # the box in the median frame from its surroundings and flag pixels that
+    # differ. Unlike the cues above this needs no motion, so a logo over a
+    # static background (sky, wall, title card) is still covered completely.
+    median = np.median(rois, axis=0).astype(np.uint8)
+    box_mask = np.zeros((h, w), np.uint8)
+    box_mask[ys, xs] = 255
+    surround = cv2.inpaint(median, box_mask, 3, cv2.INPAINT_TELEA)
+    diff = np.abs(median.astype(np.int16) - surround.astype(np.int16)).max(axis=2)[ys, xs]
+    contrast = (diff > 8).astype(np.uint8)
+    contrast = cv2.morphologyEx(contrast, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+
+    inner = edge | quiet | contrast
+    if inner.any():
+        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        inner = _fill_holes(cv2.morphologyEx(inner, cv2.MORPH_CLOSE, k))
     if inner.sum() < 0.05 * inner.size:
         inner[:] = 1  # nothing convincing: treat the whole box as the logo
     mask[ys, xs] = inner * 255

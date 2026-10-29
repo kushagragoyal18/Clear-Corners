@@ -166,7 +166,7 @@ class FrameWriter:
     """Encode BGR frames to H.264 while copying audio + metadata from the source."""
 
     def __init__(self, out_path: str | Path, src_path: str | Path, info: VideoInfo, high_quality: bool = False,
-                 start: float | None = None, duration: float | None = None):
+                 start: float | None = None, duration: float | None = None, preset: str | None = None):
         pix_fmt = info.pix_fmt if info.pix_fmt in X264_PIX_FMTS else "yuv420p"
         if pix_fmt == "nv12":
             pix_fmt = "yuv420p"
@@ -181,7 +181,7 @@ class FrameWriter:
         cmd += ["-i", str(src_path)]
 
         cmd += ["-map", "0:v:0", "-map", "1:a?", "-map_metadata", "1"]
-        cmd += ["-c:v", "libx264", "-crf", "18", "-preset", "slow" if high_quality else "veryfast",
+        cmd += ["-c:v", "libx264", "-crf", "18", "-preset", preset or ("slow" if high_quality else "veryfast"),
                 "-pix_fmt", pix_fmt, "-r", info.fps]
         for key, flag in (("color_primaries", "-color_primaries"), ("color_transfer", "-color_trc"),
                           ("color_space", "-colorspace"), ("color_range", "-color_range")):

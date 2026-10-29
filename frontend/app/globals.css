@@ -74,6 +74,12 @@ body {
     letter-spacing: -0.025em;
     font-weight: 700;
   }
+  .t-section {
+    font-size: clamp(1.625rem, 3.2vw, 2.25rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
   .t-title {
     font-size: 1.25rem;
     line-height: 1.2;

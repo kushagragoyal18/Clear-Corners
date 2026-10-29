@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 import BoxEditor from "@/components/BoxEditor";
 import Dropzone, { validateFile } from "@/components/Dropzone";
+import LandingContent from "@/components/LandingContent";
 import ModeSelector from "@/components/ModeSelector";
 import ProgressBar from "@/components/ProgressBar";
 import Stepper from "@/components/Stepper";
@@ -115,7 +116,7 @@ export default function Home() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-128.png" alt="" width={32} height={32} className="h-8 w-8 shrink-0" />
             <span className="truncate font-semibold tracking-[-0.01em]">
-              Clean Corners
+              Clear Corners
               {/* The descriptor drops on narrow screens so the header fits. */}
               <span className="hidden font-normal text-label-2 sm:inline"> – Watermark Remover</span>
             </span>
@@ -152,7 +153,9 @@ export default function Home() {
         {!job && (
           <section className="mx-auto max-w-2xl">
             <div className="mb-10 text-center">
-              <h1 className="t-display">Clean corners.</h1>
+              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.08em] text-accent">Clear Corners</p>
+              {/* The h1 states what people search for; the brand sits above it. */}
+              <h1 className="t-display">Remove the Gemini &amp; Veo watermark.</h1>
               <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-label-2">
                 Remove the visible logo from videos you generated with Gemini or Veo. Preview the result before you export.
               </p>
@@ -177,6 +180,7 @@ export default function Home() {
             </ul>
           </section>
         )}
+        {!job && <LandingContent />}
 
         {/* ---------- Analysing ---------- */}
         {job && !editing && job.status !== "error" && (
